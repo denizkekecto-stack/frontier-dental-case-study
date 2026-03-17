@@ -1,0 +1,278 @@
+{
+  "name": "Safco Dental Product Scraper",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-1",
+      "name": "Start Scraping",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "categories",
+              "value": "[{\"name\": \"Sutures & Surgical Products\", \"url\": \"https://www.safcodental.com/catalog/sutures-surgical-products\"}, {\"name\": \"Dental Exam Gloves\", \"url\": \"https://www.safcodental.com/catalog/gloves\"}]"
+            }
+          ]
+        }
+      },
+      "id": "set-categories",
+      "name": "Set Category URLs",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const categories = JSON.parse($input.first().json.categories);\nreturn categories.map(c => ({ json: c }));"
+      },
+      "id": "parse-categories",
+      "name": "Parse Categories",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-category",
+      "name": "Fetch Category Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 0],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const cheerio = require('cheerio');\nconst html = $input.first().json.body;\nconst categoryName = $input.first().json.name || 'Unknown';\nconst $ = cheerio.load(html);\n\nconst productLinks = [];\nconst seen = new Set();\n\n// Find product links\n$('a[href*=\"/product\"], a[href*=\"/catalog/\"]').each((i, el) => {\n  let href = $(el).attr('href');\n  const text = $(el).text().trim();\n  if (!href || !text || text.length < 2) return;\n  if (!href.startsWith('http')) href = 'https://www.safcodental.com' + href;\n  if (!seen.has(href)) {\n    seen.add(href);\n    productLinks.push({ url: href, name: text, category: categoryName });\n  }\n});\n\n// Also try to find product cards\n$('[class*=\"product\"] a, .card a').each((i, el) => {\n  let href = $(el).attr('href');\n  const text = $(el).text().trim();\n  if (!href || !text || text.length < 2) return;\n  if (!href.startsWith('http')) href = 'https://www.safcodental.com' + href;\n  if (!seen.has(href)) {\n    seen.add(href);\n    productLinks.push({ url: href, name: text, category: categoryName });\n  }\n});\n\nreturn productLinks.map(p => ({ json: p }));"
+      },
+      "id": "extract-links",
+      "name": "Navigator: Extract Product Links",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      },
+      "id": "rate-limit",
+      "name": "Rate Limit (2s delay)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-product",
+      "name": "Fetch Product Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 0],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const cheerio = require('cheerio');\nconst item = $input.first().json;\nconst html = item.body;\nconst $ = cheerio.load(html);\n\nfunction trySelectors(selectors) {\n  for (const sel of selectors) {\n    const el = $(sel).first();\n    const text = el.text().trim();\n    if (text && text.length > 0) return text;\n  }\n  return null;\n}\n\nfunction getImages() {\n  const imgs = [];\n  $('[class*=\"product\"] img, .product-detail img, .gallery img').each((i, el) => {\n    let src = $(el).attr('src') || $(el).attr('data-src');\n    if (src) {\n      if (!src.startsWith('http')) src = 'https://www.safcodental.com' + src;\n      if (!imgs.includes(src)) imgs.push(src);\n    }\n  });\n  return imgs;\n}\n\nconst product = {\n  product_name: trySelectors(['h1.product-title', 'h1.product-name', 'h1[class*=\"product\"]', '.product-detail h1', 'h1']),\n  brand: trySelectors(['[class*=\"brand\"]', '.product-brand', 'span.brand']),\n  sku: trySelectors(['[class*=\"sku\"]', '[class*=\"item-number\"]', '[class*=\"product-code\"]']),\n  category: item.category || 'Unknown',\n  product_url: item.url,\n  price: trySelectors(['[class*=\"price\"]', '.product-price', 'span.price']),\n  unit_size: trySelectors(['[class*=\"unit\"]', '[class*=\"pack-size\"]']),\n  availability: trySelectors(['[class*=\"availability\"]', '[class*=\"stock\"]']),\n  description: trySelectors(['.product-description', '[class*=\"description\"]', '.product-info p']),\n  image_urls: getImages(),\n  scraped_at: new Date().toISOString(),\n  extraction_method: 'css_selectors'\n};\n\n// Flag if we got no product name (triggers LLM fallback)\nproduct.needs_llm_fallback = !product.product_name;\nproduct.raw_html = product.needs_llm_fallback ? html.substring(0, 15000) : null;\n\nreturn [{ json: product }];"
+      },
+      "id": "extract-product",
+      "name": "Extractor: Pull Product Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-fallback",
+              "leftValue": "={{ $json.needs_llm_fallback }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-needs-llm",
+      "name": "Needs LLM Fallback?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1760, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-20250514",
+        "messages": {
+          "values": [
+            {
+              "content": "=Extract product information from this dental supply product page HTML. Return ONLY valid JSON with these fields (use null for missing fields): {\"product_name\": \"string\", \"brand\": \"string or null\", \"sku\": \"string or null\", \"price\": \"string or null\", \"unit_size\": \"string or null\", \"availability\": \"string or null\", \"description\": \"string or null\", \"image_urls\": [\"url\"] or []}. HTML: {{ $json.raw_html }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokensToSample": 2048
+        }
+      },
+      "id": "llm-fallback",
+      "name": "LLM Fallback Extractor",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1980, 120],
+      "credentials": {
+        "anthropicApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\ntry {\n  let responseText = item.message?.content || item.text || JSON.stringify(item);\n  responseText = responseText.replace(/```json|```/g, '').trim();\n  const parsed = JSON.parse(responseText);\n  \n  return [{ json: {\n    ...parsed,\n    category: item.category || 'Unknown',\n    product_url: item.product_url || '',\n    scraped_at: new Date().toISOString(),\n    extraction_method: 'llm_fallback'\n  }}];\n} catch(e) {\n  return [{ json: {\n    product_name: null,\n    product_url: item.product_url || '',\n    error: 'LLM parsing failed: ' + e.message,\n    extraction_method: 'llm_fallback_failed'\n  }}];\n}"
+      },
+      "id": "parse-llm-response",
+      "name": "Parse LLM Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2200, 120]
+    },
+    {
+      "parameters": {},
+      "id": "merge-results",
+      "name": "Merge Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [2420, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst seen = new Set();\nconst validated = [];\n\nfor (const item of items) {\n  const p = item.json;\n  \n  // Skip if no product name\n  if (!p.product_name || p.product_name.trim() === '') continue;\n  \n  // Clean whitespace\n  p.product_name = p.product_name.trim();\n  if (p.brand) p.brand = p.brand.trim();\n  if (p.sku) p.sku = p.sku.trim();\n  if (p.price) p.price = p.price.trim();\n  if (p.description) p.description = p.description.trim();\n  \n  // Deduplicate by name + sku + url\n  const key = (p.product_name + '|' + (p.sku || '') + '|' + (p.product_url || '')).toLowerCase();\n  if (seen.has(key)) continue;\n  seen.add(key);\n  \n  // Remove internal fields\n  delete p.needs_llm_fallback;\n  delete p.raw_html;\n  delete p.body;\n  delete p.error;\n  \n  validated.push({ json: p });\n}\n\nreturn validated;"
+      },
+      "id": "validator",
+      "name": "Validator: Dedupe & Clean",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2640, 0]
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "products.json"
+        }
+      },
+      "id": "save-json",
+      "name": "Save JSON",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [2860, -60]
+    },
+    {
+      "parameters": {
+        "operation": "toCsv",
+        "options": {
+          "fileName": "products.csv"
+        }
+      },
+      "id": "save-csv",
+      "name": "Save CSV",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [2860, 60]
+    }
+  ],
+  "connections": {
+    "Start Scraping": {
+      "main": [[{ "node": "Set Category URLs", "type": "main", "index": 0 }]]
+    },
+    "Set Category URLs": {
+      "main": [[{ "node": "Parse Categories", "type": "main", "index": 0 }]]
+    },
+    "Parse Categories": {
+      "main": [[{ "node": "Fetch Category Page", "type": "main", "index": 0 }]]
+    },
+    "Fetch Category Page": {
+      "main": [[{ "node": "Navigator: Extract Product Links", "type": "main", "index": 0 }]]
+    },
+    "Navigator: Extract Product Links": {
+      "main": [[{ "node": "Rate Limit (2s delay)", "type": "main", "index": 0 }]]
+    },
+    "Rate Limit (2s delay)": {
+      "main": [[{ "node": "Fetch Product Page", "type": "main", "index": 0 }]]
+    },
+    "Fetch Product Page": {
+      "main": [[{ "node": "Extractor: Pull Product Data", "type": "main", "index": 0 }]]
+    },
+    "Extractor: Pull Product Data": {
+      "main": [[{ "node": "Needs LLM Fallback?", "type": "main", "index": 0 }]]
+    },
+    "Needs LLM Fallback?": {
+      "main": [
+        [{ "node": "Merge Results", "type": "main", "index": 0 }],
+        [{ "node": "LLM Fallback Extractor", "type": "main", "index": 0 }]
+      ]
+    },
+    "LLM Fallback Extractor": {
+      "main": [[{ "node": "Parse LLM Response", "type": "main", "index": 0 }]]
+    },
+    "Parse LLM Response": {
+      "main": [[{ "node": "Merge Results", "type": "main", "index": 1 }]]
+    },
+    "Merge Results": {
+      "main": [[{ "node": "Validator: Dedupe & Clean", "type": "main", "index": 0 }]]
+    },
+    "Validator: Dedupe & Clean": {
+      "main": [
+        [
+          { "node": "Save JSON", "type": "main", "index": 0 },
+          { "node": "Save CSV", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "scraping" },
+    { "name": "dental" },
+    { "name": "ai-agents" }
+  ]
+}

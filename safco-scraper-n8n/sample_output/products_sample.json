@@ -1,0 +1,110 @@
+[
+  {
+    "product_name": "Safco Chromic Gut Sutures",
+    "brand": "Safco",
+    "sku": "SUG-2001",
+    "category": "Sutures & Surgical Products",
+    "subcategory": "Chromic Gut Sutures",
+    "product_url": "https://www.safcodental.com/product/chromic-gut-sutures",
+    "price": "$45.99",
+    "unit_size": "Box of 12",
+    "availability": "In Stock",
+    "description": "Absorbable chromic gut sutures for dental surgical procedures. Braided construction with reliable knot security.",
+    "specifications": {
+      "Material": "Chromic Gut",
+      "Type": "Absorbable",
+      "Needle": "Reverse Cutting",
+      "Length": "27 inches"
+    },
+    "image_urls": ["https://www.safcodental.com/images/products/chromic-gut-sutures.jpg"],
+    "alternative_products": ["Silk Sutures", "PTFE Sutures"],
+    "scraped_at": "2026-03-16T10:00:00"
+  },
+  {
+    "product_name": "Safco Silk Sutures",
+    "brand": "Safco",
+    "sku": "SUS-3001",
+    "category": "Sutures & Surgical Products",
+    "subcategory": "Silk Sutures",
+    "product_url": "https://www.safcodental.com/product/silk-sutures",
+    "price": "$38.50",
+    "unit_size": "Box of 12",
+    "availability": "In Stock",
+    "description": "Non-absorbable braided silk sutures for general dental surgery. Excellent handling and knot tying characteristics.",
+    "specifications": {
+      "Material": "Silk",
+      "Type": "Non-Absorbable",
+      "Needle": "Reverse Cutting",
+      "Length": "18 inches"
+    },
+    "image_urls": ["https://www.safcodental.com/images/products/silk-sutures.jpg"],
+    "alternative_products": ["Chromic Gut Sutures", "Nylon Sutures"],
+    "scraped_at": "2026-03-16T10:01:15"
+  },
+  {
+    "product_name": "Safco Nitrile Exam Gloves - Small",
+    "brand": "Safco",
+    "sku": "GLV-NIT-S",
+    "category": "Dental Exam Gloves",
+    "subcategory": "Nitrile Gloves",
+    "product_url": "https://www.safcodental.com/product/nitrile-exam-gloves-small",
+    "price": "$12.99",
+    "unit_size": "Box of 100",
+    "availability": "In Stock",
+    "description": "Powder-free nitrile examination gloves. Textured fingertips for enhanced grip. Latex-free.",
+    "specifications": {
+      "Material": "Nitrile",
+      "Size": "Small",
+      "Powder": "Powder-Free",
+      "Color": "Blue",
+      "Quantity": "100/box"
+    },
+    "image_urls": ["https://www.safcodental.com/images/products/nitrile-gloves-sm.jpg"],
+    "alternative_products": ["Latex Exam Gloves", "Vinyl Exam Gloves"],
+    "scraped_at": "2026-03-16T10:05:30"
+  },
+  {
+    "product_name": "Safco Nitrile Exam Gloves - Medium",
+    "brand": "Safco",
+    "sku": "GLV-NIT-M",
+    "category": "Dental Exam Gloves",
+    "subcategory": "Nitrile Gloves",
+    "product_url": "https://www.safcodental.com/product/nitrile-exam-gloves-medium",
+    "price": "$12.99",
+    "unit_size": "Box of 100",
+    "availability": "In Stock",
+    "description": "Powder-free nitrile examination gloves. Textured fingertips for enhanced grip. Latex-free.",
+    "specifications": {
+      "Material": "Nitrile",
+      "Size": "Medium",
+      "Powder": "Powder-Free",
+      "Color": "Blue",
+      "Quantity": "100/box"
+    },
+    "image_urls": ["https://www.safcodental.com/images/products/nitrile-gloves-md.jpg"],
+    "alternative_products": ["Latex Exam Gloves", "Vinyl Exam Gloves"],
+    "scraped_at": "2026-03-16T10:05:45"
+  },
+  {
+    "product_name": "Safco Latex Exam Gloves - Medium",
+    "brand": "Safco",
+    "sku": "GLV-LAT-M",
+    "category": "Dental Exam Gloves",
+    "subcategory": "Latex Gloves",
+    "product_url": "https://www.safcodental.com/product/latex-exam-gloves-medium",
+    "price": "$9.99",
+    "unit_size": "Box of 100",
+    "availability": "In Stock",
+    "description": "Lightly powdered latex examination gloves with smooth finish. Natural rubber latex for comfort and dexterity.",
+    "specifications": {
+      "Material": "Natural Rubber Latex",
+      "Size": "Medium",
+      "Powder": "Lightly Powdered",
+      "Color": "Natural",
+      "Quantity": "100/box"
+    },
+    "image_urls": ["https://www.safcodental.com/images/products/latex-gloves-md.jpg"],
+    "alternative_products": ["Nitrile Exam Gloves", "Vinyl Exam Gloves"],
+    "scraped_at": "2026-03-16T10:06:00"
+  }
+]
